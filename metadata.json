@@ -1,0 +1,5 @@
+{
+  "name": "Inventory & Accounts Manager",
+  "description": "A comprehensive system to manage business accounts, inventory, partners, sales, purchases, and expenses. It features reporting, data management with password protection, and is built to be mobile-responsive.",
+  "requestFramePermissions": []
+}
