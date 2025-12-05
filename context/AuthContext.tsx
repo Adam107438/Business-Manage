@@ -3,21 +3,22 @@ import { auth } from '../services/firebase';
 import { 
   User as FirebaseUser,
   onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   signOut
 } from 'firebase/auth';
 
 interface User {
   uid: string;
   email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signup: (email: string, pass: string) => Promise<any>;
-  login: (email: string, pass: string) => Promise<any>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -30,7 +31,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        setUser({ uid: firebaseUser.uid, email: firebaseUser.email });
+        setUser({ 
+            uid: firebaseUser.uid, 
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL
+        });
       } else {
         setUser(null);
       }
@@ -39,12 +45,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, []);
 
-  const signup = async (email: string, pass: string) => {
-    return createUserWithEmailAndPassword(auth, email, pass);
-  };
-  
-  const login = async (email: string, pass: string) => {
-    return signInWithEmailAndPassword(auth, email, pass);
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Error signing in with Google", error);
+        throw error;
+    }
   };
 
   const logout = async () => {
@@ -54,8 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const value = {
     user,
     loading,
-    signup,
-    login,
+    loginWithGoogle,
     logout,
   };
 

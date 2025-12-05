@@ -1,10 +1,11 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../hooks/useData';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
-import { Download, ArrowUpDown } from 'lucide-react';
+import { Download, ArrowUpDown, FileText } from 'lucide-react';
 import { Sale, Purchase, Expense, Investment, Contact, AccountTransfer } from '../types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 type ReportType = 'profit_loss' | 'sales' | 'purchases' | 'expenses' | 'partner_ledger' | 'account_ledger' | 'dues_report';
 
@@ -31,7 +32,7 @@ const ReportTable: React.FC<{
     requestSort: (key: string) => void;
 }> = ({headers, data, onRowClick, sortConfig, requestSort}) => (
      <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="min-w-full" id="report-table">
             <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                     {headers.map(h => 
@@ -331,6 +332,71 @@ const Reports: React.FC = () => {
         link.setAttribute("download", `${filename}_${dateRange.start}_to_${dateRange.end}.csv`);
         link.click();
     }
+
+    const downloadPDF = () => {
+        const doc = new jsPDF();
+        const title = `${reportType.replace(/_/g, ' ').toUpperCase()} REPORT (${dateRange.start} to ${dateRange.end})`;
+        
+        // Add title
+        doc.setFontSize(18);
+        doc.text(title, 14, 22);
+        
+        // Prepare data for AutoTable
+        let head: string[][] = [];
+        let body: any[][] = [];
+
+        if (reportType === 'profit_loss') {
+            head = [['Item', 'Amount']];
+            body = [
+                ['Total Revenue', `BDT ${profitLossData.totalRevenue.toLocaleString()}`],
+                ['COGS', `- BDT ${profitLossData.costOfGoodsSold.toLocaleString()}`],
+                ['Gross Profit', `BDT ${profitLossData.grossProfit.toLocaleString()}`],
+                ['Total Expenses', `- BDT ${profitLossData.totalExpenses.toLocaleString()}`],
+                ['Net Profit / Loss', `BDT ${profitLossData.netProfit.toLocaleString()}`]
+            ];
+        } else if (reportType === 'account_ledger') {
+            const { openingBalance, ledger, closingBalance } = reportContent as any;
+             head = [['Date', 'Description', 'Debit', 'Credit', 'Balance']];
+             body = [
+                 ['', 'Opening Balance', '', '', `BDT ${openingBalance.toLocaleString()}`],
+                 ...ledger.map((row: any) => [
+                     new Date(row.date).toLocaleDateString(),
+                     row.description,
+                     row.debit ? row.debit.toLocaleString() : '-',
+                     row.credit ? row.credit.toLocaleString() : '-',
+                     row.balance.toLocaleString()
+                 ]),
+                 ['', 'Closing Balance', '', '', `BDT ${closingBalance.toLocaleString()}`]
+             ];
+        } else {
+             // Generic handler for other table types
+             // We need to match the headers defined in renderReport to the data keys
+             let columns: {key: string, header: string}[] = [];
+             
+             if(reportType === 'sales') columns = [{key: 'date', header: 'Date'}, {key: 'customerName', header: 'Customer'}, {key: 'productName', header: 'Product'}, {key: 'quantity', header: 'Qty'}, {key: 'price', header: 'Price'}, {key: 'total', header: 'Total'}];
+             else if(reportType === 'purchases') columns = [{key: 'date', header: 'Date'}, {key: 'supplierName', header: 'Supplier'}, {key: 'productName', header: 'Product'}, {key: 'quantity', header: 'Qty'}, {key: 'price', header: 'Cost'}, {key: 'total', header: 'Total'}];
+             else if(reportType === 'expenses') columns = [{key: 'date', header: 'Date'}, {key: 'categoryName', header: 'Category'}, {key: 'item', header: 'Item'}, {key: 'amount', header: 'Amount'}];
+             else if(reportType === 'partner_ledger') columns = [{key: 'date', header: 'Date'}, {key: 'amount', header: 'Amount'}, {key: 'accountName', header: 'Into Account'}];
+             else if(reportType === 'dues_report') columns = [{key: 'name', header: 'Name'}, {key: 'type', header: 'Type'}, {key: 'phone', header: 'Phone'}, {key: 'due', header: 'Due Amount'}];
+
+             head = [columns.map(c => c.header)];
+             body = (reportContent as any[]).map(row => columns.map(col => {
+                 if (col.key === 'date') return new Date(row[col.key]).toLocaleDateString();
+                 if (typeof row[col.key] === 'number') return row[col.key].toLocaleString();
+                 return row[col.key];
+             }));
+        }
+
+        autoTable(doc, {
+            head: head,
+            body: body,
+            startY: 30,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246] }, // Blue-500
+        });
+
+        doc.save(`${reportType}_report.pdf`);
+    };
     
     const handleDownload = () => {
         if (reportContent && !Array.isArray(reportContent) && reportType === 'account_ledger') {
@@ -434,9 +500,14 @@ const Reports: React.FC = () => {
                             <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
                         </div>
                     </div>
-                     <Button onClick={handleDownload} className="w-full">
-                         <Download className="w-5 h-5 mr-2 inline" /> Download
-                     </Button>
+                     <div className="flex gap-2">
+                        <Button onClick={handleDownload} className="flex-1 text-sm px-2">
+                            <Download className="w-4 h-4 mr-1 inline" /> CSV
+                        </Button>
+                        <Button onClick={downloadPDF} className="flex-1 text-sm px-2 !bg-red-600 hover:!bg-red-700">
+                             <FileText className="w-4 h-4 mr-1 inline" /> PDF
+                        </Button>
+                     </div>
                 </div>
             </div>
 
