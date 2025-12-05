@@ -1,11 +1,12 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../hooks/useData';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
 import { Download, ArrowUpDown, FileText } from 'lucide-react';
 import { Sale, Purchase, Expense, Investment, Contact, AccountTransfer } from '../types';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type ReportType = 'profit_loss' | 'sales' | 'purchases' | 'expenses' | 'partner_ledger' | 'account_ledger' | 'dues_report';
 
@@ -335,30 +336,34 @@ const Reports: React.FC = () => {
 
     const downloadPDF = () => {
         const doc = new jsPDF();
-        const title = `${reportType.replace(/_/g, ' ').toUpperCase()} REPORT (${dateRange.start} to ${dateRange.end})`;
+        const title = `${reportType.replace(/_/g, ' ').toUpperCase()} REPORT`;
+        const dateText = `Date Range: ${new Date(dateRange.start).toLocaleDateString()} to ${new Date(dateRange.end).toLocaleDateString()}`;
         
-        // Add title
-        doc.setFontSize(18);
-        doc.text(title, 14, 22);
+        doc.setFontSize(16);
+        doc.text(title, 14, 20);
+        doc.setFontSize(10);
+        doc.text(dateText, 14, 26);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 31);
         
-        // Prepare data for AutoTable
+        const formatCurrency = (val: any) => typeof val === 'number' ? `BDT ${val.toLocaleString()}` : val;
+
         let head: string[][] = [];
         let body: any[][] = [];
 
         if (reportType === 'profit_loss') {
             head = [['Item', 'Amount']];
             body = [
-                ['Total Revenue', `BDT ${profitLossData.totalRevenue.toLocaleString()}`],
-                ['COGS', `- BDT ${profitLossData.costOfGoodsSold.toLocaleString()}`],
-                ['Gross Profit', `BDT ${profitLossData.grossProfit.toLocaleString()}`],
-                ['Total Expenses', `- BDT ${profitLossData.totalExpenses.toLocaleString()}`],
-                ['Net Profit / Loss', `BDT ${profitLossData.netProfit.toLocaleString()}`]
+                ['Total Revenue', formatCurrency(profitLossData.totalRevenue)],
+                ['COGS', `- ${formatCurrency(profitLossData.costOfGoodsSold)}`],
+                ['Gross Profit', formatCurrency(profitLossData.grossProfit)],
+                ['Total Expenses', `- ${formatCurrency(profitLossData.totalExpenses)}`],
+                ['Net Profit / Loss', formatCurrency(profitLossData.netProfit)]
             ];
         } else if (reportType === 'account_ledger') {
             const { openingBalance, ledger, closingBalance } = reportContent as any;
              head = [['Date', 'Description', 'Debit', 'Credit', 'Balance']];
              body = [
-                 ['', 'Opening Balance', '', '', `BDT ${openingBalance.toLocaleString()}`],
+                 ['', 'Opening Balance', '', '', formatCurrency(openingBalance)],
                  ...ledger.map((row: any) => [
                      new Date(row.date).toLocaleDateString(),
                      row.description,
@@ -366,11 +371,9 @@ const Reports: React.FC = () => {
                      row.credit ? row.credit.toLocaleString() : '-',
                      row.balance.toLocaleString()
                  ]),
-                 ['', 'Closing Balance', '', '', `BDT ${closingBalance.toLocaleString()}`]
+                 ['', 'Closing Balance', '', '', formatCurrency(closingBalance)]
              ];
         } else {
-             // Generic handler for other table types
-             // We need to match the headers defined in renderReport to the data keys
              let columns: {key: string, header: string}[] = [];
              
              if(reportType === 'sales') columns = [{key: 'date', header: 'Date'}, {key: 'customerName', header: 'Customer'}, {key: 'productName', header: 'Product'}, {key: 'quantity', header: 'Qty'}, {key: 'price', header: 'Price'}, {key: 'total', header: 'Total'}];
@@ -390,9 +393,9 @@ const Reports: React.FC = () => {
         autoTable(doc, {
             head: head,
             body: body,
-            startY: 30,
+            startY: 35,
             theme: 'grid',
-            headStyles: { fillColor: [59, 130, 246] }, // Blue-500
+            headStyles: { fillColor: [59, 130, 246] },
         });
 
         doc.save(`${reportType}_report.pdf`);

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -26,30 +27,25 @@ const Login: React.FC = () => {
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center">
         <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Welcome to IMS
+            IMS
             </h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
             Inventory & Accounts Manager
             </p>
         </div>
         
-        <div className="mt-8">
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-                Please sign in with your Google account to access your data. Your data is automatically backed up to the cloud.
-            </p>
-
+        <div className="mt-10">
             {error && <p className="mb-4 p-3 text-sm text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-md">{error}</p>}
             
             <Button 
                 onClick={handleGoogleLogin} 
-                className="w-full flex justify-center items-center gap-3 !bg-white !text-gray-700 border border-gray-300 hover:!bg-gray-50 focus:ring-gray-200 dark:!bg-gray-700 dark:!text-white dark:border-gray-600 dark:hover:!bg-gray-600"
+                className="w-full flex justify-center items-center gap-3 !bg-white !text-gray-700 border border-gray-300 hover:!bg-gray-50 focus:ring-gray-200 dark:!bg-gray-700 dark:!text-white dark:border-gray-600 dark:hover:!bg-gray-600 py-3"
                 disabled={loading}
             >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path
                         fill="currentColor"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        className="text-blue-500" // Note: color handled via class usually, but svg paths need specific fills.
                         style={{fill: "#4285F4"}}
                     />
                     <path
@@ -68,8 +64,11 @@ const Login: React.FC = () => {
                         style={{fill: "#EA4335"}}
                     />
                 </svg>
-                {loading ? 'Connecting...' : 'Continue with Google'}
+                {loading ? 'Connecting...' : 'Continue with Google Account'}
             </Button>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                Your data is automatically synced and restored when you log in with the same account.
+            </p>
         </div>
       </div>
     </div>
